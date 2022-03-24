@@ -1,6 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
+const Joi = require('joi');
 
 const app = express();
 app.use(bodyParser.json());
@@ -12,6 +13,14 @@ main().catch((err)=>console.log(err));
 async function main(){
     await mongoose.connect('mongodb://localhost:27017/thirdTask',{useNewUrlParser:true});
 };
+
+const dataValidate = Joi.object({
+    offerName : Joi.string().required(),
+    couponCode : Joi.string().uppercase().required(),
+    startDate : Joi.date().required(),
+    endDate : Joi.date().required(),
+    status : Joi.string().required()
+})
 
 // DB Model 
 
@@ -60,7 +69,7 @@ app.get("/api/couponManagement",(req, res) => {
 
 // To add a new coupon 
 
-app.post("/api/couponManagement/addCoupon", (req, res) => {
+app.post("/api/couponManagement/addCoupon", async(req, res) => {
     const coupon = new Coupon({
         offerName : req.body.offerName,
         couponCode : req.body.couponCode,
@@ -68,10 +77,41 @@ app.post("/api/couponManagement/addCoupon", (req, res) => {
         endDate : req.body.endDate,
         status : req.body.status
     });
-    coupon.save((err, data) => {
-        res.status(200).json({code:200, message: "Coupon added successfully!", addedCouponIs : data});
-    });
+
+    // Joi validation 
+
+    try{
+        const result = await dataValidate.validateAsync(req.body)
+        if (!result) { 
+            res.status(422).json({ 
+              message: 'Invalid request', 
+              error: err 
+            })             
+        } else { 
+            coupon.save((err) => {
+            res.status(200).json({code:200, message: "Coupon added successfully!", addedCouponIs : result});
+          });
+        }
+    } catch(error){
+        if(error.IsJoi){
+            res.status(422).json({code:422, message:'Invalid data'})
+        }
+    }
+
+                
 });
+
+// To search all active coupons 
+
+app.get("/api/couponManagement/active", (req, res) => {
+    Coupon.find({status:"Active"}, (err, data) => {
+        if(!err){
+            res.send(data);
+        } else {
+            console.log(err);
+        }
+    })
+})
 
 // To search a particular coupon 
 
