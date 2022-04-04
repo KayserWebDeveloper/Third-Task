@@ -2,6 +2,8 @@ const express = require('express').Router();
 const Coupon = require("../databases/schemas/schemas");
 const Joi = require('joi');
 const dataValidate = require("../validation/validate");
+const sendEmail = require('../services/mail');
+// const sendEmail = require("../services/mail");
 
 var currentDate = new Date(); //Today Date
 
@@ -34,16 +36,17 @@ exports.addCoupon = async(req, res) => {
     try{
         const result = await dataValidate.validateAsync(req.body)
         if (!result) { 
-            res.status(422).json({ message: 'Invalid request', error: err });          
+            res.status(402).json({ message: 'Invalid request', error: err });          
         } else { 
             coupon.save((err) => {
+                sendEmail(req.body.email)
             res.status(200).json({code:200, message: "Coupon added successfully!", addedCouponIs : result});
           });
         }
     } catch(error){
-        if(error.IsJoi){
-            res.status(422).json({code:422, message:'Invalid data'})
-        }
+        // if(error.IsJoi){
+            res.status(402).json({code:402, message:error.message})
+        // }
     }
 };
 
